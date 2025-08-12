@@ -1,0 +1,126 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Pixie Data Service API",
+    "version": "1.0.0",
+    "description": "API for fetching data from Pixie cluster"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local development server"
+    }
+  ],
+  "paths": {
+    "/pixie": {
+      "get": {
+        "summary": "Get Pixie data",
+        "description": "Fetches data from Pixie cluster using the configured PxL script",
+        "responses": {
+          "200": {
+            "description": "Successful response with Pixie data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "columns": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "List of column names"
+                    },
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "description": "List of data rows"
+                    },
+                    "stats": {
+                      "type": "object",
+                      "properties": {
+                        "execution_time_ms": {
+                          "type": "integer",
+                          "description": "Execution time in milliseconds"
+                        },
+                        "row_count": {
+                          "type": "integer",
+                          "description": "Number of rows returned"
+                        }
+                      },
+                      "description": "Statistics about the query execution"
+                    }
+                  }
+                },
+                "example": {
+                  "columns": ["upid", "req_path", "remote_addr", "req_method"],
+                  "rows": [
+                    ["12345", "/api/users", "192.168.1.100", "GET"],
+                    ["67890", "/login", "192.168.1.101", "POST"]
+                  ],
+                  "stats": {
+                    "execution_time_ms": 123,
+                    "row_count": 2
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "summary": "Get OpenAPI specification",
+        "description": "Returns the OpenAPI specification for this API",
+        "responses": {
+          "200": {
+            "description": "OpenAPI specification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

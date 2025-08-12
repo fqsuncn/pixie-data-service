@@ -249,8 +249,20 @@ func pixieHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(output)
 }
 
+// ServeOpenAPI serves the OpenAPI specification file
+func ServeOpenAPI(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	http.ServeFile(w, r, "openapi.json")
+}
+
 func main() {
 	http.HandleFunc("/pixie", pixieHandler)
+	http.HandleFunc("/openapi.json", ServeOpenAPI)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "index.html")
+	})
 	log.Println("Server running on :8080")
+	log.Println("OpenAPI specification available at http://localhost:8080/openapi.json")
+	log.Println("Swagger UI available at http://localhost:8080/")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
