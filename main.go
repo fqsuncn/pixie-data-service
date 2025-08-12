@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -22,6 +23,41 @@ df = df[['upid', 'req_path', 'remote_addr', 'req_method']]
 df = df.head(5)
 px.display(df, 'http')
 `
+
+// Config holds application configuration
+type Config struct {
+	PXAPIKey   string `json:"px_api_key"`
+	PXClusterID string `json:"px_cluster_id"`
+	CloudAddr  string `json:"cloud_addr"`
+}
+
+// loadConfig reads configuration from a JSON file
+func loadConfig(filename string) (*Config, error) {
+	// Read config file
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("could not read config file: %w", err)
+	}
+
+	// Parse JSON
+	var config Config
+	if err := json.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("could not parse config file: %w", err)
+	}
+
+	// Validate required fields
+	if config.PXAPIKey == "" {
+		return nil, fmt.Errorf("PX_API_KEY is not set in config file")
+	}
+	if config.PXClusterID == "" {
+		return nil, fmt.Errorf("PX_CLUSTER_ID is not set in config file")
+	}
+	if config.CloudAddr == "" {
+		return nil, fmt.Errorf("CLOUD_ADDR is not set in config file")
+	}
+
+	return &config, nil
+}
 
 // tablePrinter accumulates query results
 type tablePrinter struct {
@@ -83,9 +119,17 @@ func (t *tablePrinter) HandleDone(ctx context.Context) error {
 }
 
 func pixieHandler(w http.ResponseWriter, r *http.Request) {
-	// Get API credentials from environment variables
-	apiKey := os.Getenv("PX_API_KEY")
-	clusterID := os.Getenv("PX_CLUSTER_ID")
+	// Read configuration from config.json
+	config, err := loadConfig("config.json")
+	if err != nil {
+		log.Printf("ERROR: Failed to load config: %v\n", err)
+		http.Error(w, "Failed to load configuration", http.StatusInternalServerError)
+		return
+	}
+
+	// Get API credentials from config
+	apiKey := config.PXAPIKey
+	clusterID := config.PXClusterID
 
 	// Log that we're checking credentials (without exposing them)
 	log.Println("Checking Pixie API credentials...")
@@ -116,7 +160,7 @@ func pixieHandler(w http.ResponseWriter, r *http.Request) {
 	client, err := pxapi.NewClient(
 		ctx,
 		pxapi.WithAPIKey(apiKey),
-		pxapi.WithCloudAddr("dev.withpixie.dev:443"),
+		pxapi.WithCloudAddr(config.CloudAddr),
 		pxapi.WithE2EEncryption(true),
 	)
 	if err != nil {
