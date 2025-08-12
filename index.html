@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixie Data Service API Documentation</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4.15.5/swagger-ui.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4.15.5/swagger-ui-bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pixie Data Service API Documentation</h1>
+    <div id="swagger-ui"></div>
+    <script>
+        console.log('Loading Swagger UI...');
+        window.onload = function() {
+            try {
+                console.log('Fetching OpenAPI spec from: /openapi.json');
+                fetch('/openapi.json')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(spec => {
+                        console.log('Successfully fetched OpenAPI spec');
+                        const ui = SwaggerUIBundle({
+                            spec: spec,
+                            dom_id: '#swagger-ui',
+                            presets: [
+                                SwaggerUIBundle.presets.apis,
+                                SwaggerUIStandalonePreset
+                            ],
+                            layout: "StandaloneLayout",
+                            docExpansion: "list",
+                            deepLinking: true
+                        });
+                        window.ui = ui;
+                    })
+                    .catch(error => {
+                        console.error('Error loading OpenAPI spec:', error);
+                        document.getElementById('swagger-ui').innerHTML = `<div style="color: red;">Error loading OpenAPI specification: ${error.message}</div>`;
+                    });
+            } catch (e) {
+                console.error('Error initializing Swagger UI:', e);
+                document.getElementById('swagger-ui').innerHTML = `<div style="color: red;">Error initializing Swagger UI: ${e.message}</div>`;
+            }
+        };
+    </script>
+</body>
+</html>
