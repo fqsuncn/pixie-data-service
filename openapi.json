@@ -1,24 +1,43 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Pixie Data Service API",
-    "version": "1.0.0",
-    "description": "API for fetching data from Pixie cluster"
+    "title": "Pixie PxL Executor API",
+    "description": "API for running PxL scripts against a Pixie cluster using the Go service.",
+    "version": "1.0.0"
   },
   "servers": [
     {
       "url": "http://localhost:8080",
-      "description": "Local development server"
+      "description": "Local server"
     }
   ],
   "paths": {
     "/pixie": {
-      "get": {
-        "summary": "Get Pixie data",
-        "description": "Fetches data from Pixie cluster using the configured PxL script",
+      "post": {
+        "summary": "Execute PxL Script",
+        "description": "Run a PxL script on the configured Pixie cluster and return results as JSON.",
+        "operationId": "executePixieScript",
+        "requestBody": {
+          "description": "PxL script to execute",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "script": {
+                    "type": "string",
+                    "example": "import px\ndf = px.DataFrame(table='http_events', start_time='-1m')\npx.display(df)"
+                  }
+                },
+                "required": ["script"]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "Successful response with Pixie data",
+            "description": "Successful execution of PxL script",
             "content": {
               "application/json": {
                 "schema": {
@@ -26,97 +45,78 @@
                   "properties": {
                     "columns": {
                       "type": "array",
-                      "items": {
-                        "type": "string"
-                      },
-                      "description": "List of column names"
+                      "items": { "type": "string" }
                     },
                     "rows": {
                       "type": "array",
                       "items": {
                         "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "List of data rows"
+                        "items": { "type": "string" }
+                      }
                     },
                     "stats": {
                       "type": "object",
-                      "properties": {
-                        "execution_time_ms": {
-                          "type": "integer",
-                          "description": "Execution time in milliseconds"
-                        },
-                        "row_count": {
-                          "type": "integer",
-                          "description": "Number of rows returned"
-                        }
-                      },
-                      "description": "Statistics about the query execution"
+                      "additionalProperties": true
                     }
                   }
                 },
                 "example": {
-                  "columns": ["upid", "req_path", "remote_addr", "req_method"],
+                  "columns": ["time_", "req_id", "resp_status"],
                   "rows": [
-                    ["12345", "/api/users", "192.168.1.100", "GET"],
-                    ["67890", "/login", "192.168.1.101", "POST"]
+                    ["2025-08-22T05:30:00Z", "1", "200"],
+                    ["2025-08-22T05:30:01Z", "2", "500"]
                   ],
                   "stats": {
-                    "execution_time_ms": 123,
-                    "row_count": 2
+                    "executionTimeNs": 123456789,
+                    "recordsProcessed": 250
                   }
                 }
               }
             }
+          },
+          "400": {
+            "description": "Bad request (invalid script or JSON)"
           },
           "401": {
-            "description": "Authentication error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Unauthorized (invalid or missing Pixie credentials)"
+          },
+          "404": {
+            "description": "Cluster not found"
+          },
+          "504": {
+            "description": "Timeout connecting to Pixie cluster"
           },
           "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Internal server error"
           }
         }
       }
     },
     "/openapi.json": {
       "get": {
-        "summary": "Get OpenAPI specification",
-        "description": "Returns the OpenAPI specification for this API",
+        "summary": "Get OpenAPI Specification",
+        "description": "Retrieve this API specification file.",
+        "operationId": "getOpenAPISpec",
         "responses": {
           "200": {
-            "description": "OpenAPI specification",
+            "description": "OpenAPI JSON specification",
             "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Swagger UI",
+        "description": "Swagger UI for testing the Pixie API.",
+        "operationId": "getSwaggerUI",
+        "responses": {
+          "200": {
+            "description": "HTML page with Swagger UI",
+            "content": {
+              "text/html": {}
             }
           }
         }
