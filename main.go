@@ -11,24 +11,25 @@ import (
 	"strings"
 	"time"
 
-	pxapi "px.dev/pxapi"
+	"px.dev/pxapi"
 	"px.dev/pxapi/errdefs"
 	"px.dev/pxapi/types"
 )
 
-const pxlScript = `
-import px
-df = px.DataFrame('http_events')
-df = df[['upid', 'req_path', 'remote_addr', 'req_method']]
-df = df.head(5)
-px.display(df, 'http')
-`
+// readPXLScript reads the PXL script from a file
+func readPXLScript(filename string) (string, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return "", fmt.Errorf("could not read PXL script file: %w", err)
+	}
+	return string(data), nil
+}
 
 // Config holds application configuration
 type Config struct {
-	PXAPIKey   string `json:"px_api_key"`
+	PXAPIKey    string `json:"px_api_key"`
 	PXClusterID string `json:"px_cluster_id"`
-	CloudAddr  string `json:"cloud_addr"`
+	CloudAddr   string `json:"cloud_addr"`
 }
 
 // loadConfig reads configuration from a JSON file
@@ -214,6 +215,14 @@ func pixieHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Successfully connected to Vizier cluster: %s\n", clusterID)
 	log.Println("Authentication with Pixie API successful")
 	log.Println("Proceeding to execute PxL script...")
+
+	// Read PXL script from file
+	pxlScript, err := readPXLScript("service_edge_stats.pxl")
+	if err != nil {
+		log.Printf("ERROR: Failed to read PXL script: %v\n", err)
+		http.Error(w, "Failed to read PXL script", http.StatusInternalServerError)
+		return
+	}
 
 	tp := &tablePrinter{}
 	rs, err := vz.ExecuteScript(ctx, pxlScript, tp)
