@@ -217,7 +217,7 @@ func pixieHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Proceeding to execute PxL script...")
 
 	// Read PXL script from file
-	pxlScript, err := readPXLScript("service_edge_stats.pxl")
+	pxlScript, err := readPXLScript("conn_status.pxl")
 	if err != nil {
 		log.Printf("ERROR: Failed to read PXL script: %v\n", err)
 		http.Error(w, "Failed to read PXL script", http.StatusInternalServerError)
