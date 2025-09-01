@@ -92,6 +92,80 @@
         }
       }
     },
+    "/pixie/script/{scriptName}": {
+      "get": {
+        "summary": "Execute PxL Script from File",
+        "description": "Run a PxL script from the scripts directory on the configured Pixie cluster and return results as JSON.",
+        "operationId": "executePixieScriptFromFile",
+        "parameters": [
+          {
+            "name": "scriptName",
+            "in": "path",
+            "description": "Name of the script file to execute (located in the scripts directory)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "conn_status.pxl"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful execution of PxL script",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "columns": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    },
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                      }
+                    },
+                    "stats": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "example": {
+                  "columns": ["time_", "pod", "remote_addr", "bytes_sent"],
+                  "rows": [
+                    ["2025-08-22T05:30:00Z", "my-pod-12345", "10.0.0.1:54321", "1024"],
+                    ["2025-08-22T05:30:01Z", "my-pod-12345", "10.0.0.2:54322", "2048"]
+                  ],
+                  "stats": {
+                    "executionTimeNs": 123456789,
+                    "recordsProcessed": 250
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (missing script name)"
+          },
+          "404": {
+            "description": "Script file not found"
+          },
+          "401": {
+            "description": "Unauthorized (invalid or missing Pixie credentials)"
+          },
+          "504": {
+            "description": "Timeout connecting to Pixie cluster"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/openapi.json": {
       "get": {
         "summary": "Get OpenAPI Specification",

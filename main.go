@@ -118,6 +118,96 @@ func (t *tablePrinter) HandleDone(ctx context.Context) error {
 	return nil
 }
 
+// pixieScriptHandler handles requests to execute a script from the scripts directory
+func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("INFO: Received script file request from %s", r.RemoteAddr)
+	
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get script name from URL path
+	// Extract the script name after "/pixie/script/"
+	scriptName := r.URL.Path[len("/pixie/script/"):]
+	if scriptName == "" {
+		http.Error(w, "Script name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Read script from the scripts directory
+	scriptPath := fmt.Sprintf("scripts/%s", scriptName)
+	scriptContent, err := readPXLScript(scriptPath)
+	if err != nil {
+		log.Printf("ERROR: Failed to read script file %s: %v", scriptPath, err)
+		http.Error(w, "Failed to read script file: " + err.Error(), http.StatusNotFound)
+		return
+	}
+
+	log.Printf("INFO: Starting query with script file %s", scriptName)
+
+	// Load config
+	config, err := loadConfig("config.json")
+	if err != nil {
+		log.Printf("ERROR: Failed to load config: %v\n", err)
+		http.Error(w, "Failed to load configuration", http.StatusInternalServerError)
+		return
+	}
+
+	// Create Pixie client
+	ctx := context.Background()
+	client, err := pxapi.NewClient(
+		ctx,
+		pxapi.WithAPIKey(config.PXAPIKey),
+		pxapi.WithCloudAddr(config.CloudAddr),
+		pxapi.WithE2EEncryption(true),
+	)
+	if err != nil {
+		http.Error(w, "Failed to create Pixie API client: " + err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Connect to Vizier
+	vizCtx, vizCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer vizCancel()
+	vz, err := client.NewVizierClient(vizCtx, config.PXClusterID)
+	if err != nil {
+		http.Error(w, "Failed to connect to cluster: " + err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Execute script
+	tp := &tablePrinter{}
+	execCtx, execCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer execCancel()
+	rs, err := vz.ExecuteScript(execCtx, scriptContent, tp)
+	if err != nil {
+		http.Error(w, "Script execution failed: " + err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer rs.Close()
+
+	if err := rs.Stream(); err != nil {
+		http.Error(w, "Streaming failed: " + err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("INFO: Query completed successfully for script %s, returned %d rows and %d columns", scriptName, len(tp.rows), len(tp.cols))
+
+	// Return JSON
+	output := map[string]interface{}{
+		"columns": tp.cols,
+		"rows":    tp.rows,
+		"stats":   rs.Stats(),
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(output); err != nil {
+		log.Printf("ERROR: Failed to encode response: %v", err)
+	} else {
+		log.Printf("INFO: Response returned to %s", r.RemoteAddr)
+	}
+}
+
 func pixieHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("INFO: Received request from %s", r.RemoteAddr)
 	
@@ -228,6 +318,7 @@ func main() {
 	}
 
 	http.HandleFunc("/pixie", pixieHandler)
+	http.HandleFunc("/pixie/script/", pixieScriptHandler)
 	http.HandleFunc("/openapi.json", ServeOpenAPI)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "index.html")
