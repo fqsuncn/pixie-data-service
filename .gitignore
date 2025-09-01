@@ -1,0 +1,24 @@
+# 忽略日志目录
+logs/
+
+# 忽略配置文件（如果包含敏感信息）
+config.json
+
+# 忽略可执行文件
+*.exe
+
+# 忽略编译生成的文件
+*.o
+*.a
+*.so
+
+# 忽略IDE配置文件
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 忽略操作系统文件
+.DS_Store
+Thumbs.db
