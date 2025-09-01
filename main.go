@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -118,6 +119,8 @@ func (t *tablePrinter) HandleDone(ctx context.Context) error {
 }
 
 func pixieHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("INFO: Received request from %s", r.RemoteAddr)
+	
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
 		return
@@ -135,6 +138,8 @@ func pixieHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Missing 'script' field in request body", http.StatusBadRequest)
 		return
 	}
+
+	log.Printf("INFO: Starting query with script length %d characters", len(req.Script))
 
 	// Load config
 	config, err := loadConfig("config.json")
@@ -182,6 +187,8 @@ func pixieHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("INFO: Query completed successfully, returned %d rows and %d columns", len(tp.rows), len(tp.cols))
+
 	// Return JSON
 	output := map[string]interface{}{
 		"columns": tp.cols,
@@ -189,7 +196,11 @@ func pixieHandler(w http.ResponseWriter, r *http.Request) {
 		"stats":   rs.Stats(),
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(output)
+	if err := json.NewEncoder(w).Encode(output); err != nil {
+		log.Printf("ERROR: Failed to encode response: %v", err)
+	} else {
+		log.Printf("INFO: Response returned to %s", r.RemoteAddr)
+	}
 }
 
 // ServeOpenAPI serves the OpenAPI specification file
@@ -199,6 +210,23 @@ func ServeOpenAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// 设置日志功能：同时输出到控制台和logs目录下的文件
+	// 创建logs目录（如果不存在）
+	logDir := "logs"
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		log.Printf("ERROR: Failed to create log directory: %v\n", err)
+	}
+
+	// 创建日志文件 - 每次重启生成新文件（包含时间戳）
+	logFileName := fmt.Sprintf("%s/app-%s-%s.log", logDir, time.Now().Format("2006-01-02"), time.Now().Format("15-04-05"))
+	logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		log.Printf("ERROR: Failed to open log file: %v\n", err)
+	} else {
+		// 设置日志同时输出到控制台和文件
+		log.SetOutput(io.MultiWriter(os.Stdout, logFile))
+	}
+
 	http.HandleFunc("/pixie", pixieHandler)
 	http.HandleFunc("/openapi.json", ServeOpenAPI)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
