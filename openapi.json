@@ -101,11 +101,11 @@
           {
             "name": "scriptName",
             "in": "path",
-            "description": "Name of the script file to execute (located in the scripts directory)",
+            "description": "Name of the script file to execute (without .pxl extension, located in the scripts directory)",
             "required": true,
             "schema": {
               "type": "string",
-              "example": "conn_status.pxl"
+              "example": "conn_status"
             }
           }
         ],

@@ -135,8 +135,8 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Read script from the scripts directory
-	scriptPath := fmt.Sprintf("scripts/%s", scriptName)
+	// Read script from the scripts directory - automatically add .pxl extension
+	scriptPath := fmt.Sprintf("scripts/%s.pxl", scriptName)
 	scriptContent, err := readPXLScript(scriptPath)
 	if err != nil {
 		log.Printf("ERROR: Failed to read script file %s: %v", scriptPath, err)
