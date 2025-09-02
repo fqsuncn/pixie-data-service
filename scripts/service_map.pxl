@@ -1,0 +1,34 @@
+import px
+import pxviews
+
+''' Compute a summary of traffic by requesting service, for requests on services
+    in the current cluster.
+Args:
+@start_time: The timestamp of data to start at.
+'''
+df = pxviews.http_graph('-5m', px.now())
+df.window = px.DurationNanos(px.now() - px.parse_time('-5m'))
+# Compute statistics about each edge of the service graph.
+df.request_throughput = df.num_requests / df.window
+df.inbound_throughput = df.req_bytes / df.window
+df.outbound_throughput = df.resp_bytes / df.window
+df.throughput_total = df.num_requests
+df.error_rate = px.Percent(df.num_errors / df.num_requests)
+
+df = df[[
+    'responder_pod',
+    'requestor_pod',
+    'responder_service',
+    'requestor_service',
+    'responder_ip',
+    'requestor_ip',
+    'latency_p50',
+    'latency_p90',
+    'latency_p99',
+    'request_throughput',
+    'error_rate',
+    'inbound_throughput',
+    'outbound_throughput',
+    'throughput_total'
+]]
+px.display(df)
