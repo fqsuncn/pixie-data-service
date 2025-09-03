@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -123,7 +122,25 @@ func (t *tablePrinter) HandleDone(ctx context.Context) error {
 // pixieScriptHandler handles requests to execute a script from the scripts directory
 func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("INFO: Received script file request from %s", r.RemoteAddr)
-	
+
+	//支持跨域访问start
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	log.Printf("INFO: Received script file request from %s", r.RemoteAddr)
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	//支持跨域访问end
+
 	if r.Method != http.MethodGet {
 		http.Error(w, "Only GET allowed", http.StatusMethodNotAllowed)
 		return
@@ -139,7 +156,7 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get start-time parameter from query string
 	startTime := r.URL.Query().Get("start-time")
-	
+
 	// Validate start-time format if provided
 	if startTime != "" {
 		// Regular expression to validate format: -[0-9]+[smh]
@@ -161,7 +178,7 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 	scriptContent, err := readPXLScript(scriptPath)
 	if err != nil {
 		log.Printf("ERROR: Failed to read script file %s: %v", scriptPath, err)
-		http.Error(w, "Failed to read script file: " + err.Error(), http.StatusNotFound)
+		http.Error(w, "Failed to read script file: "+err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -189,7 +206,7 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 		pxapi.WithE2EEncryption(true),
 	)
 	if err != nil {
-		http.Error(w, "Failed to create Pixie API client: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to create Pixie API client: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -198,7 +215,7 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 	defer vizCancel()
 	vz, err := client.NewVizierClient(vizCtx, config.PXClusterID)
 	if err != nil {
-		http.Error(w, "Failed to connect to cluster: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to connect to cluster: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -208,13 +225,13 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 	defer execCancel()
 	rs, err := vz.ExecuteScript(execCtx, scriptContent, tp)
 	if err != nil {
-		http.Error(w, "Script execution failed: " + err.Error(), http.StatusBadRequest)
+		http.Error(w, "Script execution failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	defer rs.Close()
 
 	if err := rs.Stream(); err != nil {
-		http.Error(w, "Streaming failed: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Streaming failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -236,7 +253,7 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 
 func pixieHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("INFO: Received request from %s", r.RemoteAddr)
-	
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
 		return
@@ -326,22 +343,8 @@ func ServeOpenAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// 设置日志功能：同时输出到控制台和logs目录下的文件
-	// 创建logs目录（如果不存在）
-	logDir := "logs"
-	if err := os.MkdirAll(logDir, 0755); err != nil {
-		log.Printf("ERROR: Failed to create log directory: %v\n", err)
-	}
-
-	// 创建日志文件 - 每次重启生成新文件（包含时间戳）
-	logFileName := fmt.Sprintf("%s/app-%s-%s.log", logDir, time.Now().Format("2006-01-02"), time.Now().Format("15-04-05"))
-	logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Printf("ERROR: Failed to open log file: %v\n", err)
-	} else {
-		// 设置日志同时输出到控制台和文件
-		log.SetOutput(io.MultiWriter(os.Stdout, logFile))
-	}
+	// 设置日志只输出到stdout
+	log.SetOutput(os.Stdout)
 
 	http.HandleFunc("/pixie", pixieHandler)
 	http.HandleFunc("/pixie/script/", pixieScriptHandler)
