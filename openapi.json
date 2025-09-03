@@ -110,13 +110,14 @@
           },
           {
             "name": "start-time",
-            "in": "query",
-            "description": "查询的开始时间（如'-5m'表示过去5分钟，'-1h'表示过去1小时等），可选参数",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "example": "-10m"
-            }
+          "in": "query",
+          "description": "查询的开始时间，格式必须为'-[0-9]+[smh]'，如'-5m'表示过去5分钟，'-30s'表示过去30秒，'-1h'表示过去1小时等",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "pattern": "^-[0-9]+[smh]$",
+            "example": "-10m"
+          }
           }
         ],
         "responses": {

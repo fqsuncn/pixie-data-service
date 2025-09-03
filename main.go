@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -136,13 +137,23 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get start-time parameter from query string with default value '-5m'
+	// Get start-time parameter from query string
 	startTime := r.URL.Query().Get("start-time")
-	if startTime == "" {
+	
+	// Validate start-time format if provided
+	if startTime != "" {
+		// Regular expression to validate format: -[0-9]+[smh]
+		validFormat := regexp.MustCompile(`^-[0-9]+[smh]$`)
+		if !validFormat.MatchString(startTime) {
+			log.Printf("ERROR: Invalid start-time format: %s", startTime)
+			http.Error(w, "Invalid start-time format. Must be in format: -[0-9]+[smh] (e.g., '-5m', '-30s', '-1h')", http.StatusBadRequest)
+			return
+		}
+		log.Printf("INFO: Using provided start-time: %s", startTime)
+	} else {
+		// Use default value if not provided
 		startTime = "-5m"
 		log.Printf("INFO: Using default start-time: %s", startTime)
-	} else {
-		log.Printf("INFO: Using provided start-time: %s", startTime)
 	}
 
 	// Read script from the scripts directory - automatically add .pxl extension
