@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strings"
 	"time"
 
 	"px.dev/pxapi"
@@ -135,6 +136,15 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get start-time parameter from query string with default value '-5m'
+	startTime := r.URL.Query().Get("start-time")
+	if startTime == "" {
+		startTime = "-5m"
+		log.Printf("INFO: Using default start-time: %s", startTime)
+	} else {
+		log.Printf("INFO: Using provided start-time: %s", startTime)
+	}
+
 	// Read script from the scripts directory - automatically add .pxl extension
 	scriptPath := fmt.Sprintf("scripts/%s.pxl", scriptName)
 	scriptContent, err := readPXLScript(scriptPath)
@@ -142,6 +152,11 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("ERROR: Failed to read script file %s: %v", scriptPath, err)
 		http.Error(w, "Failed to read script file: " + err.Error(), http.StatusNotFound)
 		return
+	}
+
+	// Replace {start_time} placeholder with the provided start-time parameter value
+	if startTime != "" {
+		scriptContent = strings.ReplaceAll(scriptContent, "{start_time}", startTime)
 	}
 
 	log.Printf("INFO: Starting query with script file %s", scriptName)

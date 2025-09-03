@@ -107,6 +107,16 @@
               "type": "string",
               "example": "conn_status"
             }
+          },
+          {
+            "name": "start-time",
+            "in": "query",
+            "description": "查询的开始时间（如'-5m'表示过去5分钟，'-1h'表示过去1小时等），可选参数",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "-10m"
+            }
           }
         ],
         "responses": {

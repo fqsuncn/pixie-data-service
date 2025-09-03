@@ -1,7 +1,7 @@
 import px
 
 # 获取所有连接的当前状态
-df = px.DataFrame(table='conn_stats', start_time='-30s')
+df = px.DataFrame(table='conn_stats', start_time='{start_time}')
 df.namespace = df.ctx['namespace']
 df.pod = df.ctx['pod']
 

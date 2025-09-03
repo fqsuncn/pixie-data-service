@@ -6,8 +6,8 @@ import pxviews
 Args:
 @start_time: The timestamp of data to start at.
 '''
-df = pxviews.http_graph('-5m', px.now())
-df.window = px.DurationNanos(px.now() - px.parse_time('-5m'))
+df = pxviews.http_graph('{start_time}', px.now())
+df.window = px.DurationNanos(px.now() - px.parse_time('{start_time}'))
 # Compute statistics about each edge of the service graph.
 df.request_throughput = df.num_requests / df.window
 df.inbound_throughput = df.req_bytes / df.window
