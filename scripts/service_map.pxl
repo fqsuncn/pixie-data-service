@@ -9,9 +9,9 @@ Args:
 df = pxviews.http_graph('{start_time}', px.now())
 df.window = px.DurationNanos(px.now() - px.parse_time('{start_time}'))
 # Compute statistics about each edge of the service graph.
-df.request_throughput = df.num_requests / df.window
-df.inbound_throughput = df.req_bytes / df.window
-df.outbound_throughput = df.resp_bytes / df.window
+df.request_throughput = df.num_requests / (df.window / 1e9)
+df.inbound_throughput = df.req_bytes / (df.window / 1e9)
+df.outbound_throughput = df.resp_bytes / (df.window / 1e9)
 df.throughput_total = df.num_requests
 df.error_rate = px.Percent(df.num_errors / df.num_requests)
 
