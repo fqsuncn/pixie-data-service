@@ -118,6 +118,17 @@
             "pattern": "^-[0-9]+[smh]$",
             "example": "-10m"
           }
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "description": "查询的命名空间，默认为'default'",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "example": "default"
+            }
           }
         ],
         "responses": {

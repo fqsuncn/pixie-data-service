@@ -173,6 +173,15 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("INFO: Using default start-time: %s", startTime)
 	}
 
+	// Get namespace parameter from query string, default to "default"
+	namespace := r.URL.Query().Get("namespace")
+	if namespace == "" {
+		namespace = "default"
+		log.Printf("INFO: Using default namespace: %s", namespace)
+	} else {
+		log.Printf("INFO: Using provided namespace: %s", namespace)
+	}
+
 	// Read script from the scripts directory - automatically add .pxl extension
 	scriptPath := fmt.Sprintf("scripts/%s.pxl", scriptName)
 	scriptContent, err := readPXLScript(scriptPath)
@@ -186,6 +195,9 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 	if startTime != "" {
 		scriptContent = strings.ReplaceAll(scriptContent, "{start_time}", startTime)
 	}
+
+	// Replace {namespace} placeholder with the provided namespace parameter value
+	scriptContent = strings.ReplaceAll(scriptContent, "{namespace}", namespace)
 
 	log.Printf("INFO: Starting query with script file %s", scriptName)
 

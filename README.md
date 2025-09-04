@@ -67,6 +67,7 @@ curl -X POST http://localhost:8080/pixie \
 
 **可选查询参数:**
 - `start-time`: 指定查询的开始时间，**格式必须为'-[0-9]+[smh]'**（如'-5m'表示过去5分钟，'-30s'表示过去30秒，'-1h'表示过去1小时等），默认为'-5m'。如果格式不正确，将返回400错误。
+- `namespace`: 指定查询的命名空间，默认为'default'。
 
 **示例请求 (默认时间范围):**
 ```bash
@@ -138,12 +139,14 @@ curl http://localhost:8080/pixie/script/conn_status?start-time=-10m
 - 调用API时，URL中不需要包含扩展名
 - 脚本应使用Pixie PxL语法，并包含`px.display()`调用来返回结果
 - 脚本中可以使用`{start_time}`占位标志，该标志会被API请求中的`start-time`查询参数值替换（默认为'-5m'）
+- 脚本中可以使用`{namespace}`占位标志，该标志会被API请求中的`namespace`查询参数值替换（默认为'default'）
 
 **示例脚本:**
 ```python
-# 使用{start_time}占位标志的示例
+# 使用{start_time}和{namespace}占位标志的示例
 import px
 
 df = px.DataFrame(table='http_events', start_time='{start_time}')
+df = df[df.ns == '{namespace}']
 px.display(df)
 ```
