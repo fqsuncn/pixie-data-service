@@ -1,9 +1,11 @@
 package main
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -354,18 +356,82 @@ func ServeOpenAPI(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "openapi.json")
 }
 
+// gzipHandler 包装HTTP处理器，为支持gzip的客户端提供压缩响应
+func gzipHandler(handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// 检查客户端是否支持gzip压缩
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			// 如果不支持，直接调用原始处理器
+			handler(w, r)
+			return
+		}
+
+		// 设置响应头，表明内容已被gzip压缩
+		w.Header().Set("Content-Encoding", "gzip")
+
+		// 创建一个gzip响应写入器
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+
+		// 创建一个包装了gzip写入器的响应写入器
+		gzw := &gzipResponseWriter{
+			ResponseWriter: w,
+			writer:         gz,
+		}
+
+		// 调用原始处理器，但传入包装后的响应写入器
+		handler(gzw, r)
+	}
+}
+
+// gzipResponseWriter 包装http.ResponseWriter，将写入的数据压缩后输出
+// 实现http.ResponseWriter接口
+// 实现io.Writer接口
+// 实现http.Flusher接口，确保流式响应正常工作
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	writer io.Writer
+}
+
+// Write 重写http.ResponseWriter的Write方法，将数据写入gzip写入器
+func (grw *gzipResponseWriter) Write(b []byte) (int, error) {
+	// 确保Content-Type已设置
+	if len(grw.Header().Get("Content-Type")) == 0 {
+		grw.Header().Set("Content-Type", http.DetectContentType(b))
+	}
+	return grw.writer.Write(b)
+}
+
+// WriteHeader 重写http.ResponseWriter的WriteHeader方法
+// 注意：由于使用了gzip压缩，Content-Length会被忽略，所以这里不需要删除Content-Length头
+func (grw *gzipResponseWriter) WriteHeader(statusCode int) {
+	grw.ResponseWriter.WriteHeader(statusCode)
+}
+
+// Flush 实现http.Flusher接口，确保支持流式响应
+func (grw *gzipResponseWriter) Flush() {
+	if flusher, ok := grw.ResponseWriter.(http.Flusher); ok {
+		// 先刷新gzip写入器，确保所有数据都已压缩并写入底层写入器
+		grw.writer.(*gzip.Writer).Flush()
+		// 然后刷新底层的Flusher
+		flusher.Flush()
+	}
+}
+
 func main() {
 	// 设置日志只输出到stdout
 	log.SetOutput(os.Stdout)
 
-	http.HandleFunc("/pixie", pixieHandler)
-	http.HandleFunc("/pixie/script/", pixieScriptHandler)
-	http.HandleFunc("/openapi.json", ServeOpenAPI)
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// 使用gzip处理器包装所有HTTP处理器
+	http.HandleFunc("/pixie", gzipHandler(pixieHandler))
+	http.HandleFunc("/pixie/script/", gzipHandler(pixieScriptHandler))
+	http.HandleFunc("/openapi.json", gzipHandler(ServeOpenAPI))
+	http.HandleFunc("/", gzipHandler(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "index.html")
-	})
+	}))
 	log.Println("Server running on :8080")
 	log.Println("OpenAPI specification available at http://localhost:8080/openapi.json")
 	log.Println("Swagger UI available at http://localhost:8080/")
+	log.Println("Response compression (gzip) enabled for supporting clients")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
