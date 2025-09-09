@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
 	"px.dev/pxapi"
 	"px.dev/pxapi/types"
 )
@@ -126,7 +127,7 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 	//支持跨域访问start
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, macros")
 
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
@@ -153,8 +154,6 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Script name is required", http.StatusBadRequest)
 		return
 	}
-
-
 
 	// Read script from the scripts directory - automatically add .pxl extension
 	scriptPath := fmt.Sprintf("scripts/%s.pxl", scriptName)

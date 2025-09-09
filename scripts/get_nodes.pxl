@@ -1,0 +1,32 @@
+import px
+import pxviews
+
+''' Gets a list of nodes in the current cluster since start_time.'''
+
+# 获取容器数据
+df = pxviews.container_process_summary(px.now() + px.parse_duration('{start_time}'), px.now())
+
+# 统计每个 node 的 pod 数量
+agg = df.groupby(['node', 'pod']).agg()
+pod_per_node_count = agg.groupby('node').agg(pod_count=('pod', px.count))
+
+# 聚合每个 node 的 cpu 使用量
+df = df.groupby(['node']).agg(
+    cpu_usage=('cpu_usage', px.sum),
+)
+df.cpu_usage = px.Percent(df.cpu_usage)
+
+# 合并并只保留一个 node 列
+output = df.merge(
+    pod_per_node_count,
+    how='right',
+    left_on='node',
+    right_on='node',
+    suffixes=['', '_x']
+)
+
+# 只保留一个 node 列和需要的字段
+output = output[['node', 'cpu_usage', 'pod_count']]
+
+# 显示
+px.display(output)
