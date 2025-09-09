@@ -109,25 +109,13 @@
             }
           },
           {
-            "name": "start-time",
-          "in": "query",
-          "description": "查询的开始时间，格式必须为'-[0-9]+[smh]'，如'-5m'表示过去5分钟，'-30s'表示过去30秒，'-1h'表示过去1小时等",
-          "required": false,
-          "schema": {
-            "type": "string",
-            "pattern": "^-[0-9]+[smh]$",
-            "example": "-10m"
-          }
-          },
-          {
-            "name": "namespace",
-            "in": "query",
-            "description": "查询的命名空间，默认为'default'",
+            "name": "macros",
+            "in": "header",
+            "description": "JSON格式的键值对，用于在脚本中替换自定义宏占位符。键是宏名称，值是要替换的值。例如：{\"pod_name\":\"my-pod-123\",\"port\":\"8080\"}",
             "required": false,
             "schema": {
               "type": "string",
-              "default": "default",
-              "example": "default"
+              "example": "{\"start_time\":\"-1m\",\"port\":\"8080\"}"
             }
           }
         ],

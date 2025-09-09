@@ -10,10 +10,8 @@ import (
 	"net/http"
 	"os"
 	"reflect"
-	"regexp"
 	"strings"
 	"time"
-
 	"px.dev/pxapi"
 	"px.dev/pxapi/types"
 )
@@ -156,33 +154,7 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get start-time parameter from query string
-	startTime := r.URL.Query().Get("start-time")
 
-	// Validate start-time format if provided
-	if startTime != "" {
-		// Regular expression to validate format: -[0-9]+[smh]
-		validFormat := regexp.MustCompile(`^-[0-9]+[smh]$`)
-		if !validFormat.MatchString(startTime) {
-			log.Printf("ERROR: Invalid start-time format: %s", startTime)
-			http.Error(w, "Invalid start-time format. Must be in format: -[0-9]+[smh] (e.g., '-5m', '-30s', '-1h')", http.StatusBadRequest)
-			return
-		}
-		log.Printf("INFO: Using provided start-time: %s", startTime)
-	} else {
-		// Use default value if not provided
-		startTime = "-5m"
-		log.Printf("INFO: Using default start-time: %s", startTime)
-	}
-
-	// Get namespace parameter from query string, default to "default"
-	namespace := r.URL.Query().Get("namespace")
-	if namespace == "" {
-		namespace = "default"
-		log.Printf("INFO: Using default namespace: %s", namespace)
-	} else {
-		log.Printf("INFO: Using provided namespace: %s", namespace)
-	}
 
 	// Read script from the scripts directory - automatically add .pxl extension
 	scriptPath := fmt.Sprintf("scripts/%s.pxl", scriptName)
@@ -193,15 +165,24 @@ func pixieScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Replace {start_time} placeholder with the provided start-time parameter value
-	if startTime != "" {
-		scriptContent = strings.ReplaceAll(scriptContent, "{start_time}", startTime)
+	// Parse macros from request header
+	macrosHeader := r.Header.Get("macros")
+	if macrosHeader != "" {
+		var macros map[string]string
+		if err := json.Unmarshal([]byte(macrosHeader), &macros); err != nil {
+			log.Printf("WARN: Invalid macros header format: %v", err)
+		} else {
+			// Replace all macro placeholders from the macros map
+			for key, value := range macros {
+				placeholder := fmt.Sprintf("{%s}", key)
+				scriptContent = strings.ReplaceAll(scriptContent, placeholder, value)
+				log.Printf("INFO: Replaced macro %s with value %s", placeholder, value)
+			}
+		}
 	}
 
-	// Replace {namespace} placeholder with the provided namespace parameter value
-	scriptContent = strings.ReplaceAll(scriptContent, "{namespace}", namespace)
-
 	log.Printf("INFO: Starting query with script file %s", scriptName)
+	log.Printf("INFO: Executing script content: %s", scriptContent)
 
 	// Load config
 	config, err := loadConfig("config.json")

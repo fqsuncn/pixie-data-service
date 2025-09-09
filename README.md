@@ -65,21 +65,15 @@ curl -X POST http://localhost:8080/pixie \
 
 此端点允许执行存储在`scripts`目录中的PxL脚本。您只需要在URL路径中提供不包含`.pxl`扩展名的文件名。
 
-**可选查询参数:**
-- `start-time`: 指定查询的开始时间，**格式必须为'-[0-9]+[smh]'**（如'-5m'表示过去5分钟，'-30s'表示过去30秒，'-1h'表示过去1小时等），默认为'-5m'。如果格式不正确，将返回400错误。
-- `namespace`: 指定查询的命名空间，默认为'default'。
+**可选请求头:**
+- `macros`: JSON格式的键值对，用于在脚本中替换自定义宏占位符。键是宏名称，值是要替换的值。例如：`{"pod_name":"my-pod-123","port":"8080"}`
 
 **示例请求 (默认时间范围):**
 ```bash
 curl http://localhost:8080/pixie/script/conn_status
 ```
 
-**示例请求 (自定义时间范围):**
-```bash
-curl http://localhost:8080/pixie/script/conn_status?start-time=-10m
-```
-
-这将执行位于`scripts/conn_status.pxl`的脚本文件，并根据指定的时间范围查询数据。
+这将执行位于`scripts/conn_status.pxl`的脚本文件。
 
 **示例响应:**
 ```json
@@ -138,15 +132,13 @@ curl http://localhost:8080/pixie/script/conn_status?start-time=-10m
 - 所有脚本文件都应具有`.pxl`扩展名
 - 调用API时，URL中不需要包含扩展名
 - 脚本应使用Pixie PxL语法，并包含`px.display()`调用来返回结果
-- 脚本中可以使用`{start_time}`占位标志，该标志会被API请求中的`start-time`查询参数值替换（默认为'-5m'）
-- 脚本中可以使用`{namespace}`占位标志，该标志会被API请求中的`namespace`查询参数值替换（默认为'default'）
+- 脚本中可以使用自定义宏占位符，格式为`{宏名称}`，这些占位符会被`macros`请求头中的对应值替换
 
 **示例脚本:**
 ```python
-# 使用{start_time}和{namespace}占位标志的示例
+# 使用自定义宏占位符的示例
 import px
 
-df = px.DataFrame(table='http_events', start_time='{start_time}')
-df = df[df.ns == '{namespace}']
+df = px.DataFrame(table='http_events')
 px.display(df)
 ```
